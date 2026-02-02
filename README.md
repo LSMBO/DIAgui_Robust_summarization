@@ -26,7 +26,8 @@ Go to Rstudio. Install DIAgui from github:
 if(!requireNamespace("devtools", quietly = TRUE)){
    install.packages("devtools") 
 }
-devtools::install_github("mgerault/DIAgui")
+devtools::install_github("LSMBO/DIAgui_Robust_summarization")
+
 ```
 
 You can now load it and run the app with this commands: 
