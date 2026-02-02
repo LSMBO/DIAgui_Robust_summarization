@@ -1,9 +1,9 @@
 .onAttach <- function(libname, pkgname){
   packageStartupMessage(
     "\n",
-    "Welcome to DIAguiLSMBO package! To launch the app, run runDIAguiLSMBO() function.\n",
-    "To access the documentation, run browseVignettes(package = 'DIAguiLSMBO').\n",
-    "Please cite this paper using citation('DIAguiLSMBO')\n")
+    "Welcome to DIAgui package! To launch the app, run runDIAgui() function.\n",
+    "To access the documentation, run browseVignettes(package = 'DIAgui').\n",
+    "Please cite this paper using citation('DIAgui')\n")
 
   WD <<- getwd()
   packageStartupMessage(
