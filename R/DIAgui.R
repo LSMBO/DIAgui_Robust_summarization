@@ -6,7 +6,7 @@
 #'
 #' @author Marc-Antoine GERAULT \email{marco.gerault@gmail.com}
 #'
-#' @name DIAgui
+#' @name DIAguiLSMBO
 #'
 #' @import dplyr
 #' @import tidyr
@@ -18,5 +18,5 @@
 #' @import ggplot2
 #'
 #'
-#' @useDynLib DIAgui
+#' @useDynLib DIAguiLSMBO
 NULL
