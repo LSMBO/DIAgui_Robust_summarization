@@ -4,7 +4,7 @@
 #'
 #' @export
 runDIAgui <- function(){
-  appDir <- system.file("shiny-examples", "myapp", package = "DIAguiLSMBO")
+  appDir <- system.file("shiny-examples", "myapp", package = "DIAgui")
   if(appDir == ""){
     stop("Couldn't find example directory. Try re-installing 'DIAguiLSMBO'.", call = FALSE)
   }
