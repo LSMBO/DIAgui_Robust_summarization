@@ -2,13 +2,13 @@
 #  if(!requireNamespace("devtools", quietly = TRUE)){ #check if you already have the devtools package
 #   install.packages("devtools")  #if not, install it
 #  }
-#  devtools::install_github("marseille-proteomique/DIAgui")
+#  devtools::install_github("marseille-proteomique/DIAguiLSMBO")
 
 ## ---- message=FALSE, eval=FALSE-----------------------------------------------
-#  library("DIAgui")
+#  library("DIAguiLSMBO")
 
 ## ---- eval=FALSE--------------------------------------------------------------
-#  runDIAgui()      #this function will directly start the app
+#  runDIAguiLSMBO()      #this function will directly start the app
 
 ## ---- eval=FALSE--------------------------------------------------------------
 #  report <- small_report
@@ -97,7 +97,7 @@
 #                  id_name = "Protein.Group",
 #                  ecol = 2:(n_cond+1),
 #                  peptideLength = c(5,36),
-#                  proteaseRegExp = DIAgui:::getProtease("trypsin"),
+#                  proteaseRegExp = DIAguiLSMBO:::getProtease("trypsin"),
 #                  log2_transformed = FALSE)
 #  
 #  raw <- raw[,-c(2:(n_cond+1))]

@@ -12,6 +12,7 @@ library(stringr)
 library(Rcpp)
 library(RcppEigen)
 library(iq)
+library(MsCoreUtils)
 
 
 #increase the max request size for uploading files
@@ -317,8 +318,9 @@ ui <- fluidPage(
                                                                              ),
                                                                     radioButtons("wLFQ_pg", "",
                                                                                  choices = c("Use fast MaxLFQ from iq package (log2 transformed)" = "iq",
-                                                                                             "Use MaxLFQ from diann package" = "diann"),
-                                                                                 selected = "iq",
+                                                                                             "Use MaxLFQ from diann package" = "diann",
+                                                                                             "Use Robust Summarization" = "robust"),
+                                                                                 selected = "robust",
                                                                                  inline = TRUE),
                                                                     fluidRow(column(3, checkboxInput("onlycountall_pg", "Only keep peptides counts all", TRUE)),
                                                                              column(3, checkboxInput("protypiconly_pg", "Proteotypic only", TRUE)),
@@ -1928,6 +1930,130 @@ server <- function(input, output, session){
           d <- cbind(d, pc)
         }
       }
+      else if(input$wLFQ_pg == "robust") {
+        # Check if iBAQ is requested and fasta file is required but missing
+        if(input$iBAQ_pg && input$fasta_pg && is.null(fasta())){
+          showNotification("You didn't upload any FASTA files! Upload one or uncheck the 'FASTA' option to search with swissprot bank",
+                           type = "error", duration = 10)
+          message("<span style='color:red;'>You didn't upload any FASTA files!</span>")
+          return(NULL)
+        }
+        
+        # Apply log2 transformation (robust summarization requires log-scale data like msqrob2)
+        df_log <- df %>%
+          dplyr::mutate(Precursor.Log2 = log2(Precursor.Normalised))
+        
+        # Calculate peptide counts (same as iq)
+        pc <- df_log %>%
+          dplyr::group_by(Protein.Group, !!rlang::sym(smpl_header)) %>%
+          dplyr::summarise(countpep = length(unique(Precursor.Id)), .groups = "drop") %>%
+          tidyr::pivot_wider(names_from = all_of(smpl_header), 
+                            values_from = countpep,
+                            values_fill = 0) %>%
+          as.data.frame()
+        
+        rownames(pc) <- pc$Protein.Group
+        pc$Protein.Group <- NULL
+        pc <- pc[order(rownames(pc)), , drop = FALSE]
+        colnames(pc) <- paste0("pep_count_", colnames(pc))
+        pc$peptides_counts_all <- unname(apply(pc, 1, max))
+        pc <- pc[, c(ncol(pc), 1:(ncol(pc)-1))]
+        
+        # Calculate Top3 if requested (on log2-transformed data)
+        if(input$Top3_pg){
+          df_top3 <- df_log %>%
+            dplyr::mutate(Precursor.Quantity.Log2 = log2(Precursor.Quantity)) %>%
+            dplyr::select(Protein.Group, Precursor.Id, all_of(smpl_header), Precursor.Quantity.Log2) %>%
+            tidyr::pivot_wider(names_from = all_of(smpl_header), 
+                              values_from = Precursor.Quantity.Log2,
+                              id_cols = c(Protein.Group, Precursor.Id))
+          
+          proteins_top3 <- unique(df_top3$Protein.Group)
+          top3_list <- lapply(proteins_top3, function(prot) {
+            prot_data <- df_top3 %>% dplyr::filter(Protein.Group == prot)
+            prot_matrix <- as.matrix(prot_data[, -c(1:2)])
+            
+            if(nrow(prot_matrix) > 0) {
+              # For each sample (column), take mean of top 3 log2-intensities
+              top3_vals <- apply(prot_matrix, 2, function(x) {
+                x <- x[!is.na(x) & is.finite(x)]
+                if(length(x) < 3) {
+                  return(NA)
+                } else {
+                  return(mean(sort(x, decreasing = TRUE)[1:3]))
+                }
+              })
+              return(data.frame(Protein.Group = prot, t(top3_vals), stringsAsFactors = FALSE))
+            } else {
+              return(NULL)
+            }
+          })
+          
+          Top3 <- dplyr::bind_rows(top3_list)
+          rownames(Top3) <- Top3$Protein.Group
+          Top3$Protein.Group <- NULL
+          colnames(Top3) <- paste0("Top3_", colnames(Top3))
+          Top3 <- Top3[order(rownames(Top3)), , drop = FALSE]
+        }
+        
+        # Transform to wide format with log2 values (rows = precursors, columns = samples)
+        df_wide <- df_log %>%
+          dplyr::select(Protein.Group, Precursor.Id, all_of(smpl_header), Precursor.Log2) %>%
+          tidyr::pivot_wider(names_from = all_of(smpl_header), 
+                            values_from = Precursor.Log2,
+                            id_cols = c(Protein.Group, Precursor.Id))
+        
+        # Apply robustSummary for each protein (main quantification on log2 data)
+        proteins <- unique(df_wide$Protein.Group)
+        sample_names <- colnames(df_wide)[-c(1:2)]  # Get sample names from df_wide
+        
+        robust_list <- lapply(proteins, function(prot) {
+          prot_data <- df_wide %>% dplyr::filter(Protein.Group == prot)
+          prot_matrix <- as.matrix(prot_data[, -c(1:2)])
+          rownames(prot_matrix) <- prot_data$Precursor.Id
+          
+          if(nrow(prot_matrix) > 0) {
+            tryCatch({
+              robust_vals <- MsCoreUtils::robustSummary(prot_matrix)
+              result <- data.frame(Protein.Group = prot, stringsAsFactors = FALSE)
+              # Add each sample value with correct name
+              for(i in seq_along(sample_names)){
+                result[[sample_names[i]]] <- robust_vals[i]
+              }
+              return(result)
+            }, error = function(e) {
+              return(NULL)
+            })
+          } else {
+            return(NULL)
+          }
+        })
+        
+        # Combine robust results
+        robust_list <- robust_list[!sapply(robust_list, is.null)]
+        d <- dplyr::bind_rows(robust_list) %>% 
+          dplyr::group_by(Protein.Group) %>%
+          dplyr::slice(1) %>%
+          dplyr::ungroup() %>%
+          as.data.frame()
+        
+        rownames(d) <- d$Protein.Group
+        d$Protein.Group <- NULL
+        d <- d[order(rownames(d)), , drop = FALSE]
+        
+        # Add Top3 if calculated
+        if(input$Top3_pg){
+          d <- cbind(d, Top3)
+        }
+        
+        # Add peptide counts
+        if(input$onlycountall_pg){
+          d$peptides_counts_all <- pc$peptides_counts_all
+        } else {
+          d <- cbind(d, pc)
+        }
+      }
+
       nc <- ncol(d)
       d$Protein.Group <- rownames(d)
       rownames(d) <- 1:nrow(d)
@@ -1994,7 +2120,11 @@ server <- function(input, output, session){
       withCallingHandlers({
         shinyjs::html("info_pg", "")
         message("Calculation...")
-        showNotification(paste("Getting the protein group tab using the MaxLFQ algorithm from", input$wLFQ_peplfq, "package"), type = "message")
+        if(input$wLFQ_pg == "robust"){
+          showNotification("Getting the protein group tab using Robust Summarization", type = "message")
+        } else {
+          showNotification(paste("Getting the protein group tab using the MaxLFQ algorithm from", input$wLFQ_pg, "package"), type = "message")
+        }
         pg_ev$x <- pg()
         if(!is.null(pg()))
           message("Done !")
