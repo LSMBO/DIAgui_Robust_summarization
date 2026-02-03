@@ -61,6 +61,15 @@ ui <- fluidPage(
                                                numbers of samples to achieve the highest possible accuracy of quantification.<br>
                                                For more information, see this <a href=https://pubmed.ncbi.nlm.nih.gov/24942700/>article</a>
                                                from Jurgen Cox and al.
+                                        </p>
+                                        <p><h3>The Robust Summarization algorithm</h3><br>
+                                               Robust summarization algorithm determines protein intensity using a peptide-based weighted median approach. 
+                                               The aim is to obtain protein intensities reflecting closely the protein abundance variation. 
+                                               No normalization is associated.<br>
+                                               For more information, see this <a href=https://pubmed.ncbi.nlm.nih.gov/26906401/>article</a>
+                                               from Goeminne and al.:<br>
+                                               <a href='https://pubs.acs.org/doi/10.1021/pr501223t'>Summarization vs Peptide-Based Models in Label-Free Quantitative Proteomics: 
+                                               Performance, Pitfalls, and Data Analysis Guidelines.</a>
                                         </p>"
                                        )
                                   ),
@@ -917,6 +926,15 @@ server <- function(input, output, session){
 
   observe({
     updateSelectizeInput(session, "species_pg", choices = DIAgui::all_species, selected = "HOMO SAPIENS", server = TRUE)
+  })
+
+  observe({
+    if (input$wLFQ_pg == "robust") {
+      updateCheckboxInput(session, "protypiconly_pg", value = TRUE)
+      shinyjs::disable("protypiconly_pg")
+    } else {
+      shinyjs::enable("protypiconly_pg")
+    }
   })
 
   ### REPORT FILE
@@ -1827,7 +1845,7 @@ server <- function(input, output, session){
         df <- df[-idx_modif,]
       }
       brut <- df
-      if(input$protypiconly_pg){
+      if(input$protypiconly_pg | input$wLFQ_pg == "robust"){
         df <- df[which(df[["Proteotypic"]] != 0), ]
       }
       df <- df %>% dplyr::filter(Q.Value <= input$qv_pg & PG.Q.Value <= input$qvpg_pg & Protein.Q.Value <= input$qvprot_pg & GG.Q.Value <= input$qvgg_pg)
@@ -1938,27 +1956,13 @@ server <- function(input, output, session){
           message("<span style='color:red;'>You didn't upload any FASTA files!</span>")
           return(NULL)
         }
-        
-        # Apply log2 transformation (robust summarization requires log-scale data like msqrob2)
-        df_log <- df %>%
-          dplyr::mutate(Precursor.Log2 = log2(Precursor.Normalised))
-        
-        # Calculate peptide counts (same as iq)
-        pc <- df_log %>%
-          dplyr::group_by(Protein.Group, !!rlang::sym(smpl_header)) %>%
-          dplyr::summarise(countpep = length(unique(Precursor.Id)), .groups = "drop") %>%
-          tidyr::pivot_wider(names_from = all_of(smpl_header), 
-                            values_from = countpep,
-                            values_fill = 0) %>%
-          as.data.frame()
-        
-        rownames(pc) <- pc$Protein.Group
-        pc$Protein.Group <- NULL
-        pc <- pc[order(rownames(pc)), , drop = FALSE]
-        colnames(pc) <- paste0("pep_count_", colnames(pc))
-        pc$peptides_counts_all <- unname(apply(pc, 1, max))
-        pc <- pc[, c(ncol(pc), 1:(ncol(pc)-1))]
-        
+        # Apply log2 transformation (robust summarization requires log-scale data like msqrob2 with QFeatures)
+        df_log <- df %>% 
+          dplyr::mutate(
+          Precursor.Log2 = log2(Precursor.Normalised),
+          Precursor.Log2 = ifelse(is.infinite(Precursor.Log2), 0, Precursor.Log2)
+        )
+                
         # Calculate Top3 if requested (on log2-transformed data)
         if(input$Top3_pg){
           df_top3 <- df_log %>%
@@ -1972,9 +1976,7 @@ server <- function(input, output, session){
           top3_list <- lapply(proteins_top3, function(prot) {
             prot_data <- df_top3 %>% dplyr::filter(Protein.Group == prot)
             prot_matrix <- as.matrix(prot_data[, -c(1:2)])
-            
             if(nrow(prot_matrix) > 0) {
-              # For each sample (column), take mean of top 3 log2-intensities
               top3_vals <- apply(prot_matrix, 2, function(x) {
                 x <- x[!is.na(x) & is.finite(x)]
                 if(length(x) < 3) {
