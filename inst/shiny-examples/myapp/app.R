@@ -1962,7 +1962,22 @@ server <- function(input, output, session){
           Precursor.Log2 = log2(Precursor.Normalised),
           Precursor.Log2 = ifelse(is.infinite(Precursor.Log2), 0, Precursor.Log2)
         )
-                
+
+        # Calculate peptide counts
+        pc <- df_log %>%
+          dplyr::group_by(Protein.Group, !!rlang::sym(smpl_header)) %>%
+          dplyr::summarise(countpep = length(unique(Precursor.Id)), .groups = "drop") %>%
+          tidyr::pivot_wider(names_from = all_of(smpl_header), 
+                            values_from = countpep,
+                            values_fill = 0) %>%
+          as.data.frame()
+        rownames(pc) <- pc$Protein.Group
+        pc$Protein.Group <- NULL
+        pc <- pc[order(rownames(pc)), , drop = FALSE]
+        colnames(pc) <- paste0("pep_count_", colnames(pc))
+        pc$peptides_counts_all <- unname(apply(pc, 1, max))
+        pc <- pc[, c(ncol(pc), 1:(ncol(pc)-1))]
+        
         # Calculate Top3 if requested (on log2-transformed data)
         if(input$Top3_pg){
           df_top3 <- df_log %>%
