@@ -1,17 +1,18 @@
 Package: DIAgui
 Version: 1.4.9
 Type: Package
-Title: DIAgui with Robust Summarization support
+Title: A shiny app for processing DIAnn output in proteomics
 Author: Marc-Antoine GERAULT
 Maintainer: Marc-Antoine GERAULT <marco.gerault@gmail.com>
-Description: Fork of DIAgui with added Robust Summarization method using
-             MsCoreUtils. Provides an alternative to MaxLFQ for protein 
-             quantification that is more resistant to outliers. Based on 
-             the robust summarization approach used in msqrob2.
+Description: This package contains a shiny app to process the report.tsv file,
+             the output from DIA-NN. Functions used in the app are available
+             for use in an external R pipeline.
+             This package totally depends on the iq package and also takes
+             code from the diann package from Vadim Demichev.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.3
+RoxygenNote: 7.2.3
 Depends:
     R (>= 4.0.0),
     dplyr (>= 1.0.0),
@@ -54,3 +55,5 @@ LinkingTo:
     Rcpp,
     RcppEigen
 VignetteBuilder: knitr
+
+

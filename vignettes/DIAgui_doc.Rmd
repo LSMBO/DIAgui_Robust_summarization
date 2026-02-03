@@ -10,7 +10,7 @@ output:
     theme: dark
     highlight: espresso
 vignette: >
-  %\VignetteIndexEntry{Use the DIAguiLSMBO package}
+  %\VignetteIndexEntry{Use the DIAgui package}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,17 +21,17 @@ vignette: >
 * Dependent packages:  
 "shiny", "shinydashboard", "shinycssloaders", "shinyWidgets", "shinyFiles", "shinyjs", "data.table", "dplyr", "tidyr", "purrr", "openxlsx", "plotly", "ggplot2", "ggrepel", "ggpubr", "stringr", "Rcpp", "RcppEigen", "iq", "seqinr", "DT"
 
-The DIAguiLSMBO package is currently on github, so for installing it you'll also need the "devtools" package.
-You can install the DIAguiLSMBO package with this commands:
+The DIAgui package is currently on github, so for installing it you'll also need the "devtools" package.
+You can install the DIAgui package with this commands:
 
 ```{r, eval=FALSE}
 if(!requireNamespace("devtools", quietly = TRUE)){ #check if you already have the devtools package
  install.packages("devtools")  #if not, install it
 }
-devtools::install_github("marseille-proteomique/DIAguiLSMBO")
+devtools::install_github("marseille-proteomique/DIAgui")
 ```
 
-You can access the same informations (and the source code) on the [github repository](https://github.com/mgerault/DIAguiLSMBO)
+You can access the same informations (and the source code) on the [github repository](https://github.com/mgerault/DIAgui)
 
 --------------------------------------------------------------------------------------------
 
@@ -42,10 +42,10 @@ When you will use the package and/or the app inside this directory, all your res
 Indeed, when you will load the package, it will save the path of your working directory under the variable WD.
 You can modify it if you want to quickly change your saving directory, but only do it if you are sure and of course if your file exists.
 
-2. Activate `DIAguiLSMBO` package by library it.  
+2. Activate `DIAgui` package by library it.  
 
 ```{r, message=FALSE, eval=FALSE}
-library("DIAguiLSMBO")
+library("DIAgui")
 ```
 
 --------------------------------------------------
@@ -58,7 +58,7 @@ library("DIAguiLSMBO")
 -------------------------------------------------
     
 ```{r, eval=FALSE}
-runDIAguiLSMBO()      #this function will directly start the app
+runDIAgui()      #this function will directly start the app
 ```
 
 If you want more informations on how to use the app, I recommend you to watch the  [tutorial](https://www.youtube.com/watch?v=vfvh15Q93eU).
@@ -70,7 +70,7 @@ If you want more informations on how to use the app, I recommend you to watch th
    
 #### $\underline{1.\space The\space data\space}$
 
-DIAguiLSMBO contains a small report from DIA-NN, which is also available in [diann-rpcakge](https://github.com/vdemichev/diann-rpackage) from V. Demichev. This report was obtained from proteomics data from the SACCHAROMYCES CEREVISIAE.
+DIAgui contains a small report from DIA-NN, which is also available in [diann-rpcakge](https://github.com/vdemichev/diann-rpackage) from V. Demichev. This report was obtained from proteomics data from the SACCHAROMYCES CEREVISIAE.
 
 ```{r, eval=FALSE}
 report <- small_report
@@ -78,7 +78,7 @@ View(report) #take a look at the data
 ```
 
 
-With this small dataset, you can easily test the functions from DIAguiLSMBO package and also save it as a tsv file to test the shiny application.
+With this small dataset, you can easily test the functions from DIAgui package and also save it as a tsv file to test the shiny application.
 
 ```{r, eval=FALSE}
 readr::write_tsv(report, "small_report.tsv") # save the data as a tsv file
@@ -188,7 +188,7 @@ raw <- get_iBAQ(raw, proteinDB = protein_seq,
                 id_name = "Protein.Group",
                 ecol = 2:(n_cond+1),
                 peptideLength = c(5,36),
-                proteaseRegExp = DIAguiLSMBO:::getProtease("trypsin"),
+                proteaseRegExp = DIAgui:::getProtease("trypsin"),
                 log2_transformed = FALSE)
 
 raw <- raw[,-c(2:(n_cond+1))]
@@ -227,7 +227,7 @@ Once you obtained the data you wanted, you can save it as csv, txt or xlsx file.
 
 #### $\underline{3.\space Data\space visualization\space}$
 
-DIAguiLSMBO contains several functions to check the quality of your data. But first they need to be in the right format.
+DIAgui contains several functions to check the quality of your data. But first they need to be in the right format.
 Let's take the genes dataset. Your data needs to have a columns that corresponds to the id you're interested in (in our example the genes). If you don't, the rownames will be taken but the rownames have to be non numerical. To avoid potential confusion, the best is to name one column 'id':
 ```{r, eval=FALSE}
 names(genes)[1] <- "id"
